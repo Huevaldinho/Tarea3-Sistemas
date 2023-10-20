@@ -1,85 +1,80 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-  #include <stdio.h>
-  #include <stdlib.h>
-  #include <string.h>
-  #include <unistd.h> 
+struct Employee {
+    int id;
+    char name[10];
+    int age;
+};
 
-
-  /* 
-                              EJERCICIO 1
+/*            Ejercicio 1.
       Escriba un programa que escriba a un archivo la información de 10 empleados. 
-      Luego escriba otro programa que imprima los datos de los empleados que se 
+      Luego escriba otro programa que imprima los datos de los empleados que se
       encuentran almacenados en posiciones pares del archivo. 
       Debe usar la función fseek para buscar la información en el archivo (no se permite búsqueda secuencial).
-  */
 
-  struct Employee{
-    int id;
-    char  name[10];
-    int age;
-  };
-  //Guardar empleado en archivo.
-  void writeData(const char * fileName, struct Employee emp) {
-    FILE * f = fopen(fileName, "w");
+*/
+
+// Guardar empleado en archivo.
+void guardarEmpleado(const char* fileName, struct Employee emp, const char* mode) {
+    FILE* f = fopen(fileName, mode);
     if (f != NULL) {
-      //fseek(f,pos,SEEK_SET);
-      int result = fwrite(&emp, sizeof(struct Employee), 1, f);
-      if (result == 0) {
-        printf("Error writing to the given file\n");
+        int result = fwrite(&emp, sizeof(struct Employee), 1, f);
+        if (result == 0) {
+            printf("Error al escribir en el archivo.\n");
+            exit(1);
+        } else {
+            printf("Se guardó empleado en el archivo.\n");
+        }
+        fclose(f);
+    } else {
+        printf("Error al abir el archivo.\n");
         exit(1);
-      } else {
-        printf("Structure is written to the file successfully!\n");
-      }
-      fclose(f);
-    } else {
-      printf("Error opening the file to write data\n");
-      exit(1);
     }
-  }
-  //Debe imprimir la info de empleados en posiciones pares
-  void readData(const char *fileName, struct Employee * empData) {
-    FILE *f = fopen(fileName, "r");
-    fseek(f,0,SEEK_END);
-    printf("Size file:%ld\n",ftell(f));
-    fseek(f,0,SEEK_SET);
-    long int pos = 0;
+}
+
+// Debe imprimir la info de empleados en posiciones pares.
+void readData(const char* fileName) {
+    FILE * f = fopen(fileName, "r");
     if (f != NULL) {
-      for (int i=0;i<10;i++){
-        printf("Pos %ld \n",pos);
-        fseek(f,pos,SEEK_SET);
-        fread(empData, sizeof(struct Employee), 1, f);
-        pos += sizeof(empData);
-        printf("Data from file, Id: %d, Age: %d, Name: %s\n", empData->id,empData->age, empData->name);
-      }
-      fclose(f);
+        fseek(f, 0, SEEK_END);
+        long int tamannoArchivo = ftell(f);
+        long int totalEmpleados = tamannoArchivo / sizeof(struct Employee);
+        printf("Total de empleados en el archivo %ld\n", totalEmpleados);
+        struct Employee empData; //Size of struct employee = 20
+        for (int i = 0; i < totalEmpleados; i += 2) {
+            //Posiciona el puntero del archivo en las posiciones par.
+            //Posiciona en i * 20 bytes desde el inicio del archivo.
+            //Queda algo asi: 0, 40, 80, 120, 160, 200, 240, 280, 320, 360
+            fseek(f, i * sizeof(struct Employee), SEEK_SET);
+            fread(&empData, sizeof(struct Employee), 1, f);
+            printf("Empleado, id: %d, Age: %d, Nombre: %s\n", empData.id, empData.age, empData.name);
+        }
+        fclose(f);
     } else {
-      printf("Error opening the file to read data\n");
-      exit(1);
+        printf("Error opening the file to read data\n");
+        exit(1);
     }
-  }
+}
 
-  int main(){
-      const char nombreArchivo[] =  "nombreArchivo.txt";
-      struct Employee empleados[10];
-      struct Employee emp;
-      struct Employee empResult;
-      const char nombres[10][10] = {"Felipe","Marco","Pedro","Karla","Maria","Esteban","Earl","Alonso","Raquel","Celina"}; 
-      for (int i = 0; i < 10 ; i++){
-          emp.id=i;
-          emp.age=20;
-          strcpy(emp.name, nombres[i]);
-          empleados[i] = emp;
-          printf("Se deberia guardar %s %i %i \n",emp.name,emp.id,emp.age);
-          writeData(nombreArchivo,emp);
-      }
-      
-      readData(nombreArchivo, &empResult);
-      
-      //!REVISAR SI SE GUARDAN TODOS LOS NOMBRES.
-      //El asunto es saber cuales son las pos pares del archivo.
-      //Sacar size del archivo, revisar size de struct Empleado.
-      //Size archivo / size struct = cantidad de empleados
-      //Revisar pares
-
-      return 0;
-  }
+int main() {
+    const char nombreArchivo[] = "nombreArchivo.txt";
+    struct Employee emp;     
+    //Posiciones pares              0                  2                  4                  6                 8
+    const char nombres[10][10] = {"Felipe", "Marco", "Pedro", "Karla", "Maria", "Esteban", "Earl", "Alonso", "Raquel", "Celina"};
+    int primerEmpleado = 1;//Bandera para crear archivo de 0 o agregar al final del archivo.
+    for (int i = 0; i < 10; i++) {
+        //Guarda info de empleado en emp.
+        emp.id = i;
+        emp.age = 20;
+        strcpy(emp.name, nombres[i]);
+        if (primerEmpleado) {
+            guardarEmpleado(nombreArchivo, emp, "w");
+            primerEmpleado = 0;
+        }else 
+          guardarEmpleado(nombreArchivo, emp, "a");
+    }
+    readData(nombreArchivo);//Lee e imprime la info de los empleados pares.
+    return 0;
+}
